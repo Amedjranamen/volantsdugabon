@@ -2980,14 +2980,7 @@ export default function App() {
           <div className="flex flex-col space-y-1.5 text-center font-sans text-[11px] text-slate-650">
             <p className="font-medium tracking-wide">Organisé par <span className="text-custom-accent font-extrabold">Niongo Agency · Naming & Management</span></p>
             <p>Email officiel : <a href="mailto:niongoagency@gmail.com" className="text-slate-800 hover:text-custom-accent font-mono font-medium">niongoagency@gmail.com</a></p>
-            <p>Support téléphonique & WhatsApp : <a 
-  href="https://wa.me/24162559055" 
-  target="_blank" 
-  rel="noopener noreferrer"
-  className="hover:underline"
->
-  <span className="text-slate-900 font-mono font-bold">+241 62 55 90 55</span>
-</a></p>
+            <p>Support téléphonique & WhatsApp : <span className="text-slate-900 font-mono font-bold">+241 62 55 90 55</span></p>
           </div>
 
           <p className="font-heading text-[9px] tracking-[0.25em] text-slate-400 uppercase">

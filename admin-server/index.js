@@ -9,27 +9,14 @@ const SERVICE_KEY_PATH = process.env.SERVICE_ACCOUNT_KEY || path.join(__dirname,
 const ADMIN_SERVER_KEY = process.env.ADMIN_SERVER_KEY || process.env.ADMIN_API_KEY || 'dev-key-please-change';
 const PORT = process.env.PORT || 3000;
 
-// Initialize Firebase Admin safely for both local, Cloud Run and serverless (Vercel)
-let initialized = false;
-try {
-  if (process.env.SERVICE_ACCOUNT_KEY && process.env.SERVICE_ACCOUNT_KEY.trim().startsWith('{')) {
-    const svc = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
-    admin.initializeApp({ credential: admin.credential.cert(svc) });
-    initialized = true;
-  } else if (fs.existsSync(SERVICE_KEY_PATH)) {
-    const serviceAccount = JSON.parse(fs.readFileSync(SERVICE_KEY_PATH, 'utf8'));
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    initialized = true;
-  } else {
-    // Fall back to Application Default Credentials (may work on some platforms)
-    admin.initializeApp();
-    initialized = true;
-    console.warn('Initialized Firebase Admin with default credentials; verify env or service account for production.');
-  }
-} catch (err) {
-  console.error('Firebase Admin initialization failed:', err && (err.message || err));
-  // Do not exit here — allow the server to run so Vercel can return errors when endpoints are called.
+if (!fs.existsSync(SERVICE_KEY_PATH)) {
+  console.error('Service account key not found at', SERVICE_KEY_PATH);
+  console.error('Set SERVICE_ACCOUNT_KEY env var or place serviceAccountKey.json in the project root.');
+  process.exit(1);
 }
+
+const serviceAccount = JSON.parse(fs.readFileSync(SERVICE_KEY_PATH, 'utf8'));
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
 const app = express();
@@ -89,8 +76,8 @@ app.post('/update-vote', async (req, res) => {
         try {
           // Prepare and send via Resend REST API if configured
           if (RESEND_API_KEY && entry.email) {
-            const html = process.env.VOTE_OPEN_HTML || `<p>Le vote est maintenant ouvert. Rendez-vous sur <a href="https://www.levolantdor.com">www.levolantdor.com</a> pour voter.</p>`;
-            const fromAddress = process.env.NOTIFICATIONS_FROM_EMAIL || 'no-reply@levolantdor.com';
+            const html = process.env.VOTE_OPEN_HTML || `<p>Le vote est maintenant ouvert. Rendez-vous sur <a href="https://les-volants-d-or.org">les-volants-d-or.org</a> pour voter.</p>`;
+            const fromAddress = process.env.NOTIFICATIONS_FROM_EMAIL || 'no-reply@les-volants-d-or.org';
             try {
               const sendResp = await sendViaResend({ from: fromAddress, to: entry.email, subject: process.env.VOTE_OPEN_SUBJECT || "Le vote est ouvert — Les Volants d'Or", html });
               await db.collection('sentNotifications').add({ ...entry, sentAt: admin.firestore.FieldValue.serverTimestamp(), type: 'vote_opened', method: 'email', from: fromAddress, resendResponse: sendResp });
@@ -153,7 +140,7 @@ app.post('/send-partner-request', async (req, res) => {
     // Send email via Resend if configured
     const toAddress = process.env.PARTNER_RECEIVER_EMAIL || 'niongoagency@gmail.com';
     if (RESEND_API_KEY) {
-      const fromAddress = process.env.NOTIFICATIONS_FROM_EMAIL || 'no-reply@levolantdor.com';
+      const fromAddress = process.env.NOTIFICATIONS_FROM_EMAIL || 'no-reply@les-volants-d-or.org';
       const subject = process.env.PARTNER_REQUEST_SUBJECT || `Nouvelle demande de partenariat — ${partner.nomEntreprise || partner.contactNom || 'Société'}`;
       const html = `<p>Nouvelle demande de partenariat reçue :</p>
         <ul>
@@ -192,7 +179,9 @@ app.post('/send-partner-request', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Admin server listening on port ${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Admin server listening on port ${PORT}`));
+}
 
 // Debug: return recent sentNotifications
 app.get('/last-sent', async (req, res) => {
@@ -205,3 +194,5 @@ app.get('/last-sent', async (req, res) => {
     return res.status(500).json({ error: String(err) });
   }
 });
+
+module.exports = app;

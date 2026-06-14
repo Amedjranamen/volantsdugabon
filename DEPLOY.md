@@ -29,7 +29,7 @@ gcloud run deploy admin-server \
   --region REGION \
   --platform managed \
   --allow-unauthenticated \
-  --set-env-vars "ADMIN_SERVER_KEY=change-me,PARTNER_RECEIVER_EMAIL=niongoagency@gmail.com,NOTIFICATIONS_FROM_EMAIL=no-reply@levolantdor.com"
+  --set-env-vars "ADMIN_SERVER_KEY=change-me,PARTNER_RECEIVER_EMAIL=niongoagency@gmail.com,NOTIFICATIONS_FROM_EMAIL=no-reply@les-volants-d-or.org"
 ```
 
 Notes
