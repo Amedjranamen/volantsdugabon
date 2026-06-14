@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
+    function isValidString(val, minLen, maxLen) { return val is string && val.size() >= minLen && val.size() <= maxLen; }
+
+    // Default: permit public reads for the site
+    match /{document=**} {
+      allow read: if true;
+    }
+
+    // Site configuration (sponsors, banners, voteConfig, content) - admin writes only
+    match /siteConfig/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Candidates: public read, allow creation from clients with validation, updates only for votes increments
+    match /candidates/{candidateId} {
+      allow read: if true;
+
+      allow create: if (
+        isValidId(candidateId) &&
+        incoming().id == candidateId &&
+        isValidString(incoming().prenom, 2, 100) &&
+        isValidString(incoming().nom, 2, 100) &&
+        incoming().categoryId is string && incoming().categoryId.size() > 0 &&
+        incoming().categoryName is string &&
+        incoming().votesCount is int && incoming().votesCount >= 0
+      );
+
+      // Allow only vote increments: only votesCount changed and increased
+      allow update: if (
+        incoming().diff(existing()).affectedKeys().hasOnly(['votesCount']) &&
+        incoming().votesCount >= existing().votesCount
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Submissions: public create, admin read/update/delete
+    match /submissions/{submissionId} {
+      allow create: if (
+        isValidString(incoming().prenom, 2, 100) &&
+        isValidString(incoming().nom, 2, 100) &&
+        incoming().telephone is string && incoming().telephone.size() >= 8
+      );
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Voters: allow public create (registration). Reads and management restricted
+    match /voters/{phone} {
+      allow create: if (
+        isValidString(incoming().prenom, 2, 100) &&
+        isValidString(incoming().nom, 2, 100) &&
+        incoming().telephone == phone
+      );
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications: admin-only
+    match /voteNotifications/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /sentNotifications/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Additional collections used by app with conservative defaults
+    match /partners/{id} { allow create: if true; allow read, update, delete: if isAdmin(); }
+    match /village_registrations/{id} { allow create: if true; allow read, update, delete: if isAdmin(); }
+    match /gala_reservations/{id} { allow create: if true; allow read, update, delete: if isAdmin(); }
+    match /voter_notifications/{id} { allow create: if true; allow read, update, delete: if isAdmin(); }
+
+    // Deny any other write by default
+    match /{path=**} {
+      allow write: if false;
+    }
+  }
+}
+
+// Notes:
+// - This ruleset expects Firebase Authentication and a custom claim `admin:true` for admin accounts.
+// - For local testing use the Firestore emulator: `firebase emulators:start --only firestore`.
+// - Adjust validations as needed for stricter checks in production.

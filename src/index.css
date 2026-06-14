@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Outfit", "Space Grotesk", sans-serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-essentials: "Space Grotesk", "Outfit", sans-serif;
+  --font-montserrat: "Montserrat", sans-serif;
+  --font-heading: "Montserrat", sans-serif;
+}
+
+:root {
+  --accent: #e11d48; /* rouge vif (Gabon rouge) */
+  --accent-rgb: 225, 29, 72;
+  --accent-light: #ffffff; /* blanc pur */
+  --accent-hover: #f43f5e;
+  --accent-tint: rgba(225, 29, 72, 0.12);
+  --accent-gradient: linear-gradient(135deg, #ff1a40 0%, #d6002a 50%, #99001a 100%);
+}
+
+.font-essentials {
+  font-family: var(--font-essentials);
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+}
+
+.font-montserrat {
+  font-family: var(--font-montserrat);
+}
+
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* Custom styles integrating the dynamic accent variable */
+.text-custom-accent {
+  color: var(--accent);
+}
+
+.bg-custom-accent {
+  background-color: var(--accent);
+}
+
+.border-custom-accent {
+  border-color: var(--accent);
+}
+
+.focus-border-custom:focus {
+  border-color: var(--accent) !important;
+  outline: none;
+}
+
+.accent-glow {
+  box-shadow: 0 0 40px rgba(var(--accent-rgb), 0.12);
+}
+
+.accent-border-glow:hover {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 25px rgba(var(--accent-rgb), 0.08);
+}
+
+.bg-accent-gradient {
+  background: var(--accent-gradient);
+}
+
+/* Base custom resets */
+html, body {
+  scroll-behavior: smooth;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  overflow-x: hidden;
+  background-color: #ffffff;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
+}
+
+/* Custom animation effects */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.item-fade-in {
+  animation: fadeInUp 0.4s ease forwards;
+}
+
+.bg-radial-mesh {
+  background: radial-gradient(circle at 50% -20%, rgba(225, 29, 72, 0.08) 0%, rgba(255, 255, 255, 0) 65%),
+              radial-gradient(circle at 10% 85%, rgba(225, 29, 72, 0.03) 0%, rgba(255, 255, 255, 0) 45%),
+              #ffffff;
+}

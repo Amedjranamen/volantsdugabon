@@ -1,0 +1,6 @@
+{
+  "name": "Les Volants du Gabon",
+  "description": "La plateforme de référence officielle de l'événement Les Volants du Gabon. Présentation complète du Village des Chauffeurs, du Gala d'excellence, votes et inscriptions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

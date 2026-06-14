@@ -1,0 +1,10 @@
+tenaires</p>
+          <h3 className="font-essentials text-xl font-black text-white uppercase mb-6">ILS SOUTIENNENT L'ÉVÉNEMENT</h3>
+          <div className="flex flex-wrap items-center justify-center gap-6 min-h-[80px]">
+            <p className="font-montserrat text-xs text-slate-400 italic">Les logos de nos partenaires s'afficheront ici — gérez-les depuis l'administration.</p>
+          </div>
+          <div className="mt-8 border-t border-slate-700 pt-6">
+            <p className="font-montserrat text-xs text-slate-400">Devenez partenaire : <a href="https://wa.me/24162559055" className="text-amber-400 font-bold hover:underline">+241 62 55 90 55</a></p>
+          </div>
+        </div>
+  

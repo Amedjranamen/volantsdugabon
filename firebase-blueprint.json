@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "Candidate": {
+      "title": "Candidate",
+      "description": "Un candidat nominé pour un Trophée des Volants du Gabon",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID unique du candidat" },
+        "prenom": { "type": "string", "description": "Prénom du candidat" },
+        "nom": { "type": "string", "description": "Nom du candidat" },
+        "taxiNo": { "type": "string", "description": "Numéro d'immatriculation ou de portière" },
+        "experience": { "type": "string", "description": "Années d'expérience" },
+        "quartier": { "type": "string", "description": "Quartier de résidence et d'exercice" },
+        "vehicleModel": { "type": "string", "description": "Marque et modèle du véhicule" },
+        "categoryId": { "type": "string", "description": "ID de la catégorie du trophée" },
+        "categoryName": { "type": "string", "description": "Nom de la catégorie" },
+        "votesCount": { "type": "number", "description": "Nombre total de votes reçus" },
+        "initials": { "type": "string", "description": "Initiales du candidat" }
+      },
+      "required": ["id", "prenom", "nom", "categoryId", "categoryName", "votesCount", "initials"]
+    },
+    "Voter": {
+      "title": "Voter",
+      "description": "Un profil d'auditeur/électeur gabonais enregistré",
+      "type": "object",
+      "properties": {
+        "prenom": { "type": "string", "description": "Prénom du votant" },
+        "nom": { "type": "string", "description": "Nom du votant" },
+        "telephone": { "type": "string", "description": "Numéro de téléphone portable" },
+        "email": { "type": "string", "description": "Adresse email" },
+        "quartier": { "type": "string", "description": "Quartier du votant" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp de création" }
+      },
+      "required": ["prenom", "nom", "telephone", "email", "quartier", "createdAt"]
+    },
+    "ChauffeurSubmission": {
+      "title": "ChauffeurSubmission",
+      "description": "Soumission de dossier pour devenir candidat officiel",
+      "type": "object",
+      "properties": {
+        "prenom": { "type": "string" },
+        "nom": { "type": "string" },
+        "telephone": { "type": "string" },
+        "immatriculation": { "type": "string" },
+        "quartier": { "type": "string" },
+        "experience": { "type": "string" },
+        "etatVehicule": { "type": "string" },
+        "modele": { "type": "string" },
+        "categorie": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["prenom", "nom", "telephone", "immatriculation", "quartier", "experience", "categorie", "createdAt"]
+    },
+    "PartnerSubmission": {
+      "title": "PartnerSubmission",
+      "description": "Formulaire d'intérêt pour devenir partenaire officiel sponsor",
+      "type": "object",
+      "properties": {
+        "nomEntreprise": { "type": "string" },
+        "contactNom": { "type": "string" },
+        "email": { "type": "string" },
+        "telephone": { "type": "string" },
+        "packageSponsor": { "type": "string", "enum": ["diamant", "gold", "silver", "bronze"] },
+        "interetGagnant": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nomEntreprise", "contactNom", "email", "telephone", "packageSponsor", "createdAt"]
+    }
+  },
+  "firestore": {
+    "candidates/{candidateId}": {
+      "schema": "Candidate",
+      "description": "Liste publique des candidats soumis aux votes"
+    },
+    "voters/{voterPhone}": {
+      "schema": "Voter",
+      "description": "Profils des votants identifiés par leur numéro de téléphone pour éviter les fraudes"
+    },
+    "submissions/{submissionId}": {
+      "schema": "ChauffeurSubmission",
+      "description": "Dossiers de candidatures envoyés au comité"
+    },
+    "partners/{partnerId}": {
+      "schema": "PartnerSubmission",
+      "description": "Demandes de partenariat / sponsoring reçues"
+    }
+  }
+}
