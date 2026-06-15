@@ -5,22 +5,98 @@ const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
 
-const SERVICE_KEY_PATH = process.env.SERVICE_ACCOUNT_KEY || path.join(__dirname, '..', 'serviceAccountKey.json');
 const ADMIN_SERVER_KEY = process.env.ADMIN_SERVER_KEY || process.env.ADMIN_API_KEY || 'dev-key-please-change';
 const PORT = process.env.PORT || 3000;
 
-if (!fs.existsSync(SERVICE_KEY_PATH)) {
-  console.error('Service account key not found at', SERVICE_KEY_PATH);
-  console.error('Set SERVICE_ACCOUNT_KEY env var or place serviceAccountKey.json in the project root.');
-  process.exit(1);
+// Load service account from multiple possible sources:
+// - process.env.SERVICE_ACCOUNT_KEY as raw JSON string
+// - process.env.SERVICE_ACCOUNT_KEY as base64-encoded JSON
+// - process.env.SERVICE_ACCOUNT_KEY as a filesystem path
+// - fallback to ../serviceAccountKey.json file
+// - final fallback: application default credentials
+let serviceAccount = null;
+const envKey = process.env.SERVICE_ACCOUNT_KEY;
+if (envKey) {
+  const trimmed = envKey.trim();
+  // If it looks like JSON, try parse
+  if (trimmed.startsWith('{')) {
+    try {
+      serviceAccount = JSON.parse(trimmed);
+    } catch (e) {
+      console.warn('SERVICE_ACCOUNT_KEY looks like JSON but failed to parse:', e && e.message);
+    }
+  }
+
+  // If not parsed, try base64 decode
+  if (!serviceAccount) {
+    try {
+      const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
+      if (decoded.trim().startsWith('{')) {
+        serviceAccount = JSON.parse(decoded);
+      }
+    } catch (e) {
+      // not base64 or not valid JSON
+    }
+  }
+
+  // If still not parsed, treat as a path
+  if (!serviceAccount && fs.existsSync(envKey)) {
+    try {
+      serviceAccount = JSON.parse(fs.readFileSync(envKey, 'utf8'));
+    } catch (e) {
+      console.warn('Failed reading SERVICE_ACCOUNT_KEY file at', envKey, e && e.message);
+    }
+  }
 }
 
-const serviceAccount = JSON.parse(fs.readFileSync(SERVICE_KEY_PATH, 'utf8'));
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+// Try default file path if still not found
+const defaultPath = path.join(__dirname, '..', 'serviceAccountKey.json');
+if (!serviceAccount && fs.existsSync(defaultPath)) {
+  try {
+    serviceAccount = JSON.parse(fs.readFileSync(defaultPath, 'utf8'));
+  } catch (e) {
+    console.warn('Failed reading default serviceAccountKey.json:', e && e.message);
+  }
+}
+
+if (serviceAccount) {
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+} else {
+  console.warn('No service account provided, falling back to Application Default Credentials');
+  try {
+    admin.initializeApp();
+  } catch (e) {
+    console.error('Failed to initialize firebase-admin with ADC:', e && e.message);
+    process.exit(1);
+  }
+}
 const db = admin.firestore();
 
 const app = express();
-app.use(cors());
+
+// CORS configuration: only allow the frontend origins and localhost for local dev
+const allowedOrigins = [
+  'https://les-volants-d-or.web.app',
+  'https://www.levolantdor.com',
+  'https://les-volants-d-or.firebaseapp.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS policy: Origin not allowed'));
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-api-key']
+}));
+
+// Ensure preflight requests are handled
+app.options('*', cors());
+
 app.use(bodyParser.json());
 
 // Resend API setup (we call REST API directly using global fetch)
@@ -47,6 +123,11 @@ async function sendViaResend({ from, to, subject, html }) {
 
 // Simple API key auth middleware
 app.use((req, res, next) => {
+  // allow unauthenticated health checks and other public probes
+  if (req.path === '/health' || req.path === '/.well-known/ready' || req.path === '/.well-known/live') {
+    return next();
+  }
+
   const key = req.header('x-api-key') || req.query.api_key;
   if (!key || key !== ADMIN_SERVER_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -179,7 +260,7 @@ app.post('/send-partner-request', async (req, res) => {
   }
 });
 
-if (require.main === module) {
+if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => console.log(`Admin server listening on port ${PORT}`));
 }
 

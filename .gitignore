@@ -21,3 +21,5 @@ yarn-error.log*
 coverage/
 /.env.local
 /.env.production
+.vercel
+.env*
