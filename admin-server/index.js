@@ -59,18 +59,24 @@ if (!serviceAccount && fs.existsSync(defaultPath)) {
   }
 }
 
+let db = null;
+let adminInitialized = false;
 if (serviceAccount) {
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-} else {
-  console.warn('No service account provided, falling back to Application Default Credentials');
   try {
-    admin.initializeApp();
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    db = admin.firestore();
+    adminInitialized = true;
+    console.log('firebase-admin initialized from SERVICE_ACCOUNT_KEY');
   } catch (e) {
-    console.error('Failed to initialize firebase-admin with ADC:', e && e.message);
-    process.exit(1);
+    console.error('Failed to initialize firebase-admin with provided service account:', e && e.message);
+    db = null;
   }
+} else {
+  // Do NOT attempt Application Default Credentials automatically in a serverless environment
+  // because ADC can throw an unclear error if no Project ID is present. Instead, require
+  // a SERVICE_ACCOUNT_KEY env var (base64 JSON recommended) or explicitly opt-in to ADC.
+  console.warn('No SERVICE_ACCOUNT_KEY provided — firebase-admin not initialized. Set SERVICE_ACCOUNT_KEY in environment to enable Firestore operations.');
 }
-const db = admin.firestore();
 
 const app = express();
 
@@ -158,6 +164,7 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 app.post('/update-vote', async (req, res) => {
   const payload = req.body;
   if (!payload || typeof payload.votingEnabled === 'undefined') return res.status(400).json({ error: 'payload.votingEnabled required' });
+  if (!db) return res.status(500).json({ error: 'Server not configured: missing SERVICE_ACCOUNT_KEY. Set SERVICE_ACCOUNT_KEY in Vercel (base64 JSON recommended).' });
 
   const newConfig = payload;
   try {
@@ -228,10 +235,14 @@ app.post('/send-partner-request', async (req, res) => {
   const partner = payload.partner;
   try {
     // Persist to Firestore partners collection for record (if available)
-    try {
-      await db.collection('partners').add({ ...partner, createdAt: admin.firestore.FieldValue.serverTimestamp() });
-    } catch (e) {
-      console.warn('Could not persist partner request to Firestore', e && (e.message || e));
+    if (db) {
+      try {
+        await db.collection('partners').add({ ...partner, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      } catch (e) {
+        console.warn('Could not persist partner request to Firestore', e && (e.message || e));
+      }
+    } else {
+      console.warn('Skipping Firestore persist for partner request: Firestore not configured');
     }
 
     // Send email via Resend if configured
@@ -283,6 +294,7 @@ if (process.env.NODE_ENV !== 'production') {
 // Debug: return recent sentNotifications
 app.get('/last-sent', async (req, res) => {
   try {
+    if (!db) return res.status(500).json({ error: 'Server not configured: missing SERVICE_ACCOUNT_KEY' });
     const snaps = await db.collection('sentNotifications').orderBy('sentAt', 'desc').limit(50).get();
     const items = snaps.docs.map(d => ({ id: d.id, ...d.data() }));
     return res.json(items);
