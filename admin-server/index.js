@@ -74,6 +74,20 @@ const db = admin.firestore();
 
 const app = express();
 
+// If Vercel routes keep the `/api` prefix, strip it so Express routes match.
+app.use((req, res, next) => {
+  if (req.url && req.url.startsWith('/api/')) {
+    req.url = req.url.replace(/^\/api/, '');
+  }
+  next();
+});
+
+// Simple request logger for debugging in Vercel logs
+app.use((req, res, next) => {
+  try { console.log('req', req.method, req.url, 'origin=', req.headers && req.headers.origin); } catch (e) {}
+  next();
+});
+
 // CORS configuration: only allow the frontend origins and localhost for local dev
 const allowedOrigins = [
   'https://les-volants-d-or.web.app',
