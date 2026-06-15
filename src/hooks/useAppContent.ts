@@ -4,49 +4,15 @@ import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { Category, CategoryGroup, AppContentConfig } from '../types';
 import { CATEGORIES, DEFAULT_CATEGORY_GROUPS, CATEGORY_EVOLUTION_NOTE } from '../data';
 
-const STORAGE_KEY = 'volants_gabon_admin_content_v1';
-
 const defaultConfig: AppContentConfig = {
   categoryGroups: DEFAULT_CATEGORY_GROUPS,
   categories: CATEGORIES.map((c) => ({ ...c, isActive: c.isActive !== false })),
   evolutionNote: CATEGORY_EVOLUTION_NOTE,
 };
 
-function loadConfig(): AppContentConfig {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as AppContentConfig;
-      return {
-        categoryGroups: parsed.categoryGroups?.length ? parsed.categoryGroups : defaultConfig.categoryGroups,
-        categories: parsed.categories?.length ? parsed.categories : defaultConfig.categories,
-        evolutionNote: parsed.evolutionNote || defaultConfig.evolutionNote,
-      };
-    }
-  } catch {
-    /* fallback */
-  }
-  return defaultConfig;
-}
-
-function persistConfig(config: AppContentConfig) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch (e) {
-    console.warn('persistConfig failed:', e);
-  }
-}
-
 export function useAppContent() {
-  // Start with local config by default; if Firestore becomes available we will switch
-  const [config, setConfig] = useState<AppContentConfig>(() => loadConfig());
-
-  // Persist to localStorage only when Firestore is NOT available. When Firestore is
-  // configured we prefer it as the source of truth and will not read from localStorage.
-  useEffect(() => {
-    if (isFirebaseConfigured && db) return;
-    persistConfig(config);
-  }, [config]);
+  // Start with default config; Firestore (when available) becomes source of truth.
+  const [config, setConfig] = useState<AppContentConfig>(defaultConfig);
 
   // When Firestore becomes available, listen to the `siteConfig/content` document
   // and use its value as the authoritative source of truth.
