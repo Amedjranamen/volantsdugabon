@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, isFirebaseConfigured, handleFirestoreError, OperationType } from '../firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { Category, CategoryGroup, AppContentConfig } from '../types';
 import { CATEGORIES, DEFAULT_CATEGORY_GROUPS, CATEGORY_EVOLUTION_NOTE } from '../data';
 
@@ -38,11 +38,43 @@ function persistConfig(config: AppContentConfig) {
 }
 
 export function useAppContent() {
-  const [config, setConfig] = useState<AppContentConfig>(loadConfig);
+  // Start with local config by default; if Firestore becomes available we will switch
+  const [config, setConfig] = useState<AppContentConfig>(() => loadConfig());
 
+  // Persist to localStorage only when Firestore is NOT available. When Firestore is
+  // configured we prefer it as the source of truth and will not read from localStorage.
   useEffect(() => {
+    if (isFirebaseConfigured && db) return;
     persistConfig(config);
   }, [config]);
+
+  // When Firestore becomes available, listen to the `siteConfig/content` document
+  // and use its value as the authoritative source of truth.
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return;
+    try {
+      const ref = doc(db, 'siteConfig', 'content');
+      const unsub = onSnapshot(ref, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as any;
+          const cfg: AppContentConfig = {
+            categoryGroups: data.categoryGroups?.length ? data.categoryGroups : defaultConfig.categoryGroups,
+            categories: data.categories?.length ? data.categories : defaultConfig.categories,
+            evolutionNote: data.evolutionNote || defaultConfig.evolutionNote,
+          };
+          setConfig(cfg);
+        } else {
+          // If the doc does not exist, fall back to defaults (and keep localStorage untouched)
+          setConfig(defaultConfig);
+        }
+      }, (err) => {
+        console.error('siteConfig/content snapshot error', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.error('Failed to subscribe to siteConfig/content:', e);
+    }
+  }, [isFirebaseConfigured, db]);
 
   const updateCategoryGroups = useCallback((groups: CategoryGroup[]) => {
     setConfig((prev) => ({ ...prev, categoryGroups: groups }));
