@@ -323,13 +323,23 @@ export default function App() {
 
     const normalizeBannersList = (raw: any[] | undefined) => {
       if (!raw || !Array.isArray(raw)) return [] as import('./types').Banner[];
-      return raw.map((b: any, idx: number) => ({
-        id: b.id || b._id || `banner-${idx}`,
-        imageUrl: b.imageUrl || b.image || b.url || '',
-        linkUrl: b.linkUrl || b.link || b.website || '',
-        label: b.label || b.name || '',
-        active: b.active !== false
-      } as import('./types').Banner));
+      const seen = new Set();
+      return raw.map((b: any, idx: number) => {
+        const baseId = b.id || b._id || `banner-${idx}`;
+        let id = baseId;
+        let suffix = 1;
+        while (seen.has(id)) {
+          id = `${baseId}-${suffix++}`;
+        }
+        seen.add(id);
+        return {
+          id,
+          imageUrl: b.imageUrl || b.image || b.url || '',
+          linkUrl: b.linkUrl || b.link || b.website || '',
+          label: b.label || b.name || '',
+          active: b.active !== false
+        } as import('./types').Banner;
+      });
     };
     if (!isFirebaseConfigured || !db) {
       console.log('Firebase not configured or db not available');
