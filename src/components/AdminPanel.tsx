@@ -3,7 +3,7 @@ import { Shield, Trophy, Users, Settings, Plus, Trash2, Save, RotateCcw, Eye, Ey
 import { Category, CategoryGroup, Candidate, Banner, Sponsor, VoteConfig } from '../types';
 import { db, isFirebaseConfigured, app, auth, storage } from '../firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+// Cloud Functions fallback removed — admin-server Vercel required
 import { signInWithEmailAndPassword, signOut, getIdTokenResult } from 'firebase/auth';
 
 // Small helper form to add a new category
@@ -175,21 +175,9 @@ export default function AdminPanel(props: AdminPanelProps) {
       }
     }
 
-    // Fallback: call Cloud Function callable `adminUpdate`
-    try {
-      const functions = getFunctions(app);
-      const adminUpdate = httpsCallable(functions, 'adminUpdate');
-      const res = await adminUpdate({ type: 'voteConfig', payload: newConfig });
-      onUpdateVoteConfig(newConfig);
-      if (res.data?.notifications) {
-        alert(`${res.data.notifications.success} notifications envoyées, ${res.data.notifications.failed} en échec.`);
-      } else {
-        alert('Statut du vote mis à jour.');
-      }
-    } catch (err: any) {
-      console.error('adminUpdate error', err);
-      alert('Erreur lors de la mise à jour du vote: ' + (err?.message || String(err)));
-    }
+    // No fallback: require admin server URL
+    alert("Erreur: admin-server non configuré. Définissez VITE_ADMIN_SERVER_URL pour activer les actions d'administration.");
+    return;
   };
 
   if (!loggedIn) {
