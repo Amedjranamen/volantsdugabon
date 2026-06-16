@@ -146,8 +146,9 @@ export default function AdminPanel(props: AdminPanelProps) {
       votingClosedAt: voteConfig.votingEnabled ? new Date().toISOString() : voteConfig.votingClosedAt,
     };
     // If an external admin server is configured, call it instead of Cloud Functions
-    const adminServerUrl = (import.meta as any).env?.VITE_ADMIN_SERVER_URL as string | undefined;
-    const adminServerKey = (import.meta as any).env?.VITE_ADMIN_SERVER_KEY as string | undefined;
+    const env = (import.meta as any).env || {};
+    const adminServerUrl = env.VITE_ADMIN_SERVER_URL || env.VITE_API_URL;
+    const adminServerKey = env.VITE_ADMIN_SERVER_KEY || env.VITE_ADMIN_SERVER_key || env.ADMIN_SERVER_KEY || env.VITE_ADMIN_SERVER_KEY;
 
     if (adminServerUrl) {
       try {

@@ -166,12 +166,17 @@ app.post('/update-vote', async (req, res) => {
   if (!payload || typeof payload.votingEnabled === 'undefined') return res.status(400).json({ error: 'payload.votingEnabled required' });
   if (!db) return res.status(500).json({ error: 'Server not configured: missing SERVICE_ACCOUNT_KEY. Set SERVICE_ACCOUNT_KEY in Vercel (base64 JSON recommended).' });
 
+  // Normalize incoming payload and ensure votingEnabled is boolean
   const newConfig = payload;
   try {
-    await db.doc('siteConfig/voteConfig').set(newConfig, { merge: true });
+    const votingEnabled = (newConfig.votingEnabled === true || newConfig.votingEnabled === 'true');
+    // persist normalized boolean back to Firestore to avoid string/typing issues
+    const persistedConfig = { ...newConfig, votingEnabled };
+    await db.doc('siteConfig/voteConfig').set(persistedConfig, { merge: true });
 
-    if (newConfig.votingEnabled) {
+    if (votingEnabled) {
       const snaps = await db.collection('voter_notifications').get();
+      console.log('update-vote: votingEnabled=true — notifying', snaps.size, 'entries');
       let success = 0;
       let failed = 0;
       // Send email notifications using Resend (if configured)
