@@ -852,7 +852,7 @@ export default function App() {
       <img
         src={logoVolants}
         alt="Les Volants du Gabon Logo"
-        className="w-full h-[75px] object-fill transition-transform duration-300 group-hover:scale-105"
+        className="w-full h-[165px] object-fill transition-transform duration-300 group-hover:scale-105"
         referrerPolicy="no-referrer"
       />
     </div>
@@ -1043,22 +1043,26 @@ export default function App() {
             </div>
 
             <div className="space-y-2">
-              {[
-                { id: 'accueil', label: "L'Excellence", icon: Trophy, desc: 'Accueil et actualités' },
-                { id: 'village', label: 'Village Citoyen', icon: Car, desc: 'L\'impact social des chauffeurs' },
-                { id: 'gala', label: 'Nuit du Gala', icon: Award, desc: 'Grand dîner de remise' },
-                { id: 'categories', label: 'Awards', icon: Compass, desc: '25 awards nationaux' },
-                { id: 'inscriptions', label: 'Inscriptions', icon: Flame, desc: 'Soutenez vos champions', premium: true },
-                
-                { id: 'sponsors', label: 'Partenaires et Sponsors', icon: Users, desc: 'Soutenir l\'initiative' },
-              ].map((tab) => {
+              {([
+                { id: 'accueil', label: 'Excellence', icon: Trophy, desc: 'Accueil et actualités' },
+                { id: 'village', label: 'Village', icon: Car, desc: 'Village citoyen' },
+                { id: 'gala', label: 'Gala', icon: Award, desc: 'Gala' },
+                { id: 'categories', label: 'AWARDS', icon: Compass, desc: '25 awards nationaux' },
+                ...(voteConfig?.votingEnabled ? [{ id: 'vote', label: 'Votez', icon: Flame, desc: 'Votez maintenant', premium: true }] : []),
+                { id: 'inscriptions', label: 'Candidature', icon: Flame, desc: 'Soutenez vos champions' },
+                { id: 'sponsors', label: 'Sponsors', icon: Users, desc: 'Partenaires et Sponsors' },
+              ]).map((tab) => {
                 const IconComponent = tab.icon;
                 const isSelected = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => {
-                      setActiveTab(tab.id as any);
+                      if (tab.id === 'vote') {
+                        openVoterPortal();
+                      } else {
+                        setActiveTab(tab.id as any);
+                      }
                       setIsMobileMenuOpen(false);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}

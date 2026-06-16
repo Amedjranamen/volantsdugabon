@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Trophy, Users, Settings, Plus, Trash2, Save, RotateCcw, Eye, EyeOff, ChevronDown, Image, Star } from 'lucide-react';
 import { Category, CategoryGroup, Candidate, Banner, Sponsor, VoteConfig } from '../types';
-import { db, isFirebaseConfigured, app, auth } from '../firebase';
+import { db, isFirebaseConfigured, app, auth, storage } from '../firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { signInWithEmailAndPassword, signOut, getIdTokenResult } from 'firebase/auth';
 
@@ -94,6 +95,9 @@ export default function AdminPanel(props: AdminPanelProps) {
   const [draftBanners, setDraftBanners] = useState<Banner[]>(banners ?? []);
   const [draftSponsors, setDraftSponsors] = useState<Sponsor[]>(sponsors ?? []);
   const [editableCandidates, setEditableCandidates] = useState<Candidate[]>(candidates ?? []);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState<{ kind: 'group' | 'banner' | 'sponsor'; index: number } | null>(null);
 
   useEffect(() => setDraftGroups(categoryGroups), [categoryGroups]);
   useEffect(() => setDraftNote(evolutionNote), [evolutionNote]);
@@ -256,16 +260,17 @@ export default function AdminPanel(props: AdminPanelProps) {
                 {draftGroups.map((g, i) => (
                   <div key={g.id} className="space-y-2 p-3 border rounded">
                     <div className="flex items-center gap-2">
-                      <input value={(g as any).title || ''} onChange={(e) => setDraftGroups(prev => {
+                            <input value={(g as any).title || ''} onChange={(e) => setDraftGroups(prev => {
                         const next = prev.map(x => x.id === g.id ? { ...x, title: e.target.value } : x);
                         try { onUpdateCategoryGroups(next); } catch (e) {}
                         return next;
                       })} className="flex-1 p-2 border rounded" placeholder="Titre du groupe (ex: Catégories Pro)" />
-                      <input value={(g as any).imageUrl || ''} onChange={(e) => setDraftGroups(prev => {
-                        const next = prev.map(x => x.id === g.id ? { ...x, imageUrl: e.target.value } : x);
-                        try { onUpdateCategoryGroups(next); } catch (e) {}
-                        return next;
-                      })} className="w-56 p-2 border rounded" placeholder="URL image (imageUrl)" />
+                            <input value={(g as any).imageUrl || ''} onChange={(e) => setDraftGroups(prev => {
+                              const next = prev.map(x => x.id === g.id ? { ...x, imageUrl: e.target.value } : x);
+                              try { onUpdateCategoryGroups(next); } catch (e) {}
+                              return next;
+                            })} className="w-56 p-2 border rounded" placeholder="URL image (imageUrl)" />
+                            <button type="button" onClick={() => { setUploadTarget({ kind: 'group', index: i }); fileInputRef.current?.click(); }} className="px-2 py-1 border rounded">Téléverser</button>
                       <div className="flex gap-1">
                         <button disabled={i===0} onClick={() => setDraftGroups(prev => { const copy = [...prev]; [copy[i-1], copy[i]] = [copy[i], copy[i-1]]; try { onUpdateCategoryGroups(copy); } catch(e){}; return copy; })} className="px-2 py-1 border rounded">↑</button>
                         <button disabled={i===draftGroups.length-1} onClick={() => setDraftGroups(prev => { const copy = [...prev]; [copy[i+1], copy[i]] = [copy[i], copy[i+1]]; try { onUpdateCategoryGroups(copy); } catch(e){}; return copy; })} className="px-2 py-1 border rounded">↓</button>
@@ -371,6 +376,7 @@ export default function AdminPanel(props: AdminPanelProps) {
                     {draftBanners.map((b, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <input value={(b as any).imageUrl || ''} onChange={(e) => setDraftBanners(prev => prev.map((x, idx) => idx===i ? { ...(x as any), imageUrl: e.target.value } : x))} className="flex-1 p-2 border rounded" placeholder="URL image (imageUrl)" />
+                        <button type="button" onClick={() => { setUploadTarget({ kind: 'banner', index: i }); fileInputRef.current?.click(); }} className="px-2 py-1 border rounded">Téléverser</button>
                         <input value={(b as any).linkUrl || ''} onChange={(e) => setDraftBanners(prev => prev.map((x, idx) => idx===i ? { ...(x as any), linkUrl: e.target.value } : x))} className="w-48 p-2 border rounded" placeholder="Lien cible (linkUrl)" />
                         <button onClick={() => setDraftBanners(prev => prev.filter((_, idx) => idx!==i))} className="px-2 py-1 border rounded text-red-600">Suppr</button>
                       </div>
@@ -389,6 +395,7 @@ export default function AdminPanel(props: AdminPanelProps) {
                       <div key={i} className="flex items-center gap-2">
                         <input value={(s as any).name || ''} onChange={(e) => setDraftSponsors(prev => prev.map((x, idx) => idx===i ? { ...(x as any), name: e.target.value } : x))} className="flex-1 p-2 border rounded" placeholder="Nom sponsor" />
                         <input value={(s as any).logoUrl || (s as any).logo || ''} onChange={(e) => setDraftSponsors(prev => prev.map((x, idx) => idx===i ? { ...(x as any), logoUrl: e.target.value } : x))} className="w-36 p-2 border rounded" placeholder="URL logo (logoUrl)" />
+                        <button type="button" onClick={() => { setUploadTarget({ kind: 'sponsor', index: i }); fileInputRef.current?.click(); }} className="px-2 py-1 border rounded">Téléverser</button>
                         <input value={(s as any).websiteUrl || ''} onChange={(e) => setDraftSponsors(prev => prev.map((x, idx) => idx===i ? { ...(x as any), websiteUrl: e.target.value } : x))} className="w-48 p-2 border rounded" placeholder="Site web (websiteUrl)" />
                         <button onClick={() => setDraftSponsors(prev => prev.filter((_, idx) => idx!==i))} className="px-2 py-1 border rounded text-red-600">Suppr</button>
                       </div>
@@ -402,6 +409,43 @@ export default function AdminPanel(props: AdminPanelProps) {
               </div>
             </div>
           )}
+
+          {/* Hidden file input used for uploads */}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file || !uploadTarget) return;
+            try {
+              setUploading(true);
+              const path = `uploads/${Date.now()}-${file.name}`;
+              const sRef = storageRef(storage, path);
+              await uploadBytes(sRef, file);
+              const url = await getDownloadURL(sRef);
+              if (uploadTarget.kind === 'group') {
+                setDraftGroups(prev => {
+                  const next = prev.map((x, idx) => idx === uploadTarget.index ? { ...x, imageUrl: url } : x);
+                  try { onUpdateCategoryGroups(next); } catch (e) {}
+                  return next;
+                });
+              } else if (uploadTarget.kind === 'banner') {
+                const next = draftBanners.map((x, idx) => idx === uploadTarget.index ? { ...(x as any), imageUrl: url } : x);
+                setDraftBanners(next);
+                const normalized = next.map(b => ({ id: (b as any).id || `banner-${Date.now()}`, imageUrl: (b as any).imageUrl || (b as any).image || '', linkUrl: (b as any).linkUrl || (b as any).link || '', label: (b as any).label || '', active: (b as any).active !== false }));
+                onUpdateBanners(normalized);
+              } else if (uploadTarget.kind === 'sponsor') {
+                const next = draftSponsors.map((x, idx) => idx === uploadTarget.index ? { ...(x as any), logoUrl: url } : x);
+                setDraftSponsors(next);
+                const normalized = next.map(s => ({ id: (s as any).id || `sponsor-${Date.now()}`, name: (s as any).name || '', logoUrl: (s as any).logoUrl || (s as any).logo || '', websiteUrl: (s as any).websiteUrl || (s as any).website || '', active: (s as any).active !== false }));
+                onUpdateSponsors(normalized);
+              }
+            } catch (err) {
+              console.error('Upload error', err);
+              alert('Erreur de téléversement : ' + (err as any)?.message || String(err));
+            } finally {
+              setUploading(false);
+              setUploadTarget(null);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }
+          }} />
 
         </main>
       </div>

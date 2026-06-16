@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from './firebase-applet-config.json';
 
 export enum OperationType {
@@ -39,6 +40,7 @@ export const isFirebaseConfigured =
 let appInstance;
 let dbInstance: any = null;
 let authInstance: any = null;
+let storageInstance: any = null;
 
 if (isFirebaseConfigured) {
   try {
@@ -48,6 +50,7 @@ if (isFirebaseConfigured) {
       : undefined;
     dbInstance = databaseId ? getFirestore(appInstance, databaseId) : getFirestore(appInstance);
     authInstance = getAuth(appInstance);
+    storageInstance = getStorage(appInstance);
     
     // Validate Connection to Firestore (As mandated in Part 1)
     const testConnection = async () => {
@@ -68,6 +71,7 @@ if (isFirebaseConfigured) {
 export const db = dbInstance;
 export const auth = authInstance;
 export const app = appInstance;
+export const storage = storageInstance;
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
